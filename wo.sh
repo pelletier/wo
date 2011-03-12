@@ -185,32 +185,36 @@ function wo_save_vars {
 function wo_open {
     if [ -z "$1" ]; then
         echo "Please provide a project name."
-    else
-        # First we check if a corresponding venv exists
-        echo "$BASE_VENVS/$1"
-        if [ -d "$BASE_VENVS/$1" ]; then
-            # A venv exists
-            workon "$1"
-        else
-            # We check if another project (such as a ruby one exists)
-            if [ -d "$BASE_WO/$1" ]; then
-                cd "$BASE_WO/$1"
+        return -1
+    fi
 
-                # Read the configuration file
-                WO_RUBY=0
-                source "$BASE_WO/$1/.wo.conf"
+    found=0
+    # First we check if a corresponding venv exists
+    if [ -d "$BASE_VENVS/$1" ]; then
+        # A venv exists
+        found=1
+        workon "$1"
+    fi
+    # We check if another project (such as a ruby one exists)
+    if [ -d "$BASE_WO/$1" ]; then
+        found=1
+        cd "$BASE_WO/$1"
 
-                # Test if it is a Ruby project
-                if [ $WO_RUBY = 1 ]; then
-                    rvm use "$WO_RVM_NAME"
-                fi
+        # Read the configuration file
+        WO_RUBY=0
+        source "$BASE_WO/$1/.wo.conf"
 
-                export WO_USING_RUBY=1
-
-            else
-                echo "No project named '$1' found."
-            fi
+        # Test if it is a Ruby project
+        if [ $WO_RUBY = 1 ]; then
+            rvm use "$WO_RVM_NAME"
         fi
+
+        export WO_USING_RUBY=1
+
+    fi
+    if [ $found = 0 ]; then
+        echo "No project named '$1' found."
+        return -1
     fi
 }
 
