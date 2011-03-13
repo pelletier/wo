@@ -29,6 +29,11 @@
 #   wo -c bar
 #       Create a basic project (ie: just create the directory and cd).
 #
+#   wo -c bar -g git://github.com/pelletier/wo.git
+#       Create a basic project and clone the given repository.
+#
+#   wo -c foo -g .
+#       Create a basic project and initialize an empty git repository in it.
 #
 #   wo bar
 #       Open the previously created bar project (detect if it is python/ruby,
@@ -36,9 +41,10 @@
 #   
 #
 #   wo -d
-#       Exist your current project.
+#       Exit your current project.
 #
-
+#   wo foo -P
+#       Git pull in the foo project
 
 BASE_WO="/Users/thomas/code"
 BASE_VENVS="/Users/thomas/.venvs"
@@ -58,13 +64,18 @@ function wo {
     RVM=""
     LANG_CHOOSED=0
     CREATE=0
+    GIT_URL="None"
+    WO_PULL=0
 
-    while getopts "ldc:prR:" flag $@
+    while getopts "ldc:prR:g:P" flag $@
     do
         case "$flag" in
             "c")
                 CREATE=1
                 PROJECT_NAME=$OPTARG
+                ;;
+            "P")
+                export WO_PULL=1
                 ;;
             "l")
                 wo_list_projects
@@ -90,6 +101,9 @@ function wo {
                 ;;
             "R")
                 RVM=$OPTARG
+                ;;
+            "g")
+                GIT_URL=$OPTARG
                 ;;
             "?")
                 wo_command_list
@@ -139,8 +153,18 @@ function wo {
         # Now language was selected, so just create the dir
         mkdir "$BASE_WO/$PROJECT_NAME"
         cd "$BASE_WO/$PROJECT_NAME"
-        touch "$BASE_WO/$PROJECT_NAME/.wo.conf"
 
+        # Clone a git repo or init if needed
+        if [ $GIT_URL != "None" ]; then
+            if [ $GIT_URL != "." ]; then
+                cd "$BASE_WO/$PROJECT_NAME" && git clone $GIT_URL .
+            else
+                cd "$BASE_WO/$PROJECT_NAME" && git init .
+            fi
+        fi
+        
+        # Then create the configuration file
+        touch "$BASE_WO/$PROJECT_NAME/.wo.conf"
         return 0
 
     fi
@@ -216,6 +240,10 @@ function wo_open {
         echo "No project named '$1' found."
         return -1
     fi
+
+    if [ $WO_PULL = 1 ]; then
+        cd "$BASE_WO/$1" && git pull
+    fi
 }
 
 function wo_list_projects {
@@ -228,6 +256,9 @@ function wo_command_list {
       wo <project_name>
     Close a project
       wo -d
+    Git-specific
+      wo <project-name> -P
+        git pull in the given project
     Create a project
       wo -c <project_name> [options]
         -p
@@ -235,5 +266,9 @@ function wo_command_list {
         -r
           Create a Ruby (rvm) project
         -R foo@bar
-          RVM environment to use. See RVM documentation for syntax"
+          RVM environment to use. See RVM documentation for syntax
+        -g .
+          Initialize an empty git repository.
+        -g <git_url>
+          Clone a git repository."
 }
